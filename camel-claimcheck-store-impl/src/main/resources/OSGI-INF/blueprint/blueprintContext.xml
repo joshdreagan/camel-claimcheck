@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+~ Copyright (C) Red Hat, Inc.
+~ http://www.redhat.com
+~
+~ Licensed under the Apache License, Version 2.0 (the "License");
+~ you may not use this file except in compliance with the License.
+~ You may obtain a copy of the License at
+~
+~    http://www.apache.org/licenses/LICENSE-2.0
+~
+~ Unless required by applicable law or agreed to in writing, software
+~ distributed under the License is distributed on an "AS IS" BASIS,
+~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+~ See the License for the specific language governing permissions and
+~ limitations under the License.
+-->
+<blueprint xmlns="http://www.osgi.org/xmlns/blueprint/v1.0.0"
+           xmlns:camel="http://camel.apache.org/schema/blueprint"
+           xmlns:prop="http://camel.apache.org/schema/placeholder"
+           xmlns:cm="http://aries.apache.org/blueprint/xmlns/blueprint-cm/v1.1.0"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:schemaLocation="http://www.osgi.org/xmlns/blueprint/v1.0.0 http://www.osgi.org/xmlns/blueprint/v1.0.0/blueprint.xsd
+                               http://camel.apache.org/schema/blueprint http://camel.apache.org/schema/blueprint/camel-blueprint.xsd
+                               http://aries.apache.org/blueprint/xmlns/blueprint-cm/v1.1.0 http://aries.apache.org/schemas/blueprint-cm/blueprint-cm-1.1.0.xsd">
+
+  <cm:property-placeholder persistent-id="org.jboss.poc.camelclaimcheck.store" update-strategy="reload">
+    <cm:default-properties>
+      <cm:property name="store.sftp.username" value="josh.reagan"/>
+      <cm:property name="store.sftp.password" value="password"/>
+      <cm:property name="store.sftp.host" value="192.168.56.101"/>
+      <cm:property name="store.sftp.port" value="22"/>
+      <cm:property name="store.sftp.path" value="data"/>
+      <cm:property name="store.sftp.pollTimeout" value="30000"/>
+    </cm:default-properties>
+  </cm:property-placeholder>
+ 
+  <service ref="messageStore" interface="org.jboss.poc.camel.store.MessageStore"/>
+ 
+  <camelContext id="camel-claimcheck-store-impl" trace="false" xmlns="http://camel.apache.org/schema/blueprint">
+
+    <proxy id="messageStore" serviceInterface="org.jboss.poc.camel.store.MessageStore" serviceUrl="direct-vm:messageStore"/>
+    
+    <consumerTemplate id="consumer"/>
+    
+    <route id="messageStoreRoute">
+      <from uri="direct-vm:messageStore"/>
+      <choice>
+        <when>
+          <simple>${body.method.name} == 'store'</simple>
+          <to uri="direct:storeSftp"/>
+        </when>
+        <when>
+          <simple>${body.method.name} == 'claim'</simple>
+          <to uri="direct:claimSftp"/>
+        </when>
+      </choice>
+    </route>
+    
+    <route id="sftpStoreRoute">
+      <from uri="direct:storeSftp"/>
+      <log message="Storing message: ${id}"/>
+      <setBody>
+        <simple>${body.args[0]}</simple>
+      </setBody>
+      <convertBodyTo type="java.lang.byte[]"/>
+      <to uri="sftp://{{store.sftp.username}}@{{store.sftp.host}}:{{store.sftp.port}}/{{store.sftp.path}}?password=RAW({{store.sftp.password}})&amp;maximumReconnectAttempts=0&amp;reconnectDelay=5000&amp;stepwise=true&amp;separator=UNIX&amp;throwExceptionOnConnectFailed=true"/>
+      <setBody>
+        <simple>${id}</simple>
+      </setBody>
+    </route>
+    
+    <route id="sftpClaimRoute">
+      <from uri="direct:claimSftp"/>
+      <setBody>
+        <simple>${body.args[0]}</simple>
+      </setBody>
+      <setHeader headerName="CamelFileName">
+        <simple>${body}</simple>
+      </setHeader>
+      <setHeader headerName="MessageStoreURI">
+        <simple>sftp://${properties:store.sftp.username}@${properties:store.sftp.host}:${properties:store.sftp.port}/${properties:store.sftp.path}?password=RAW(${properties:store.sftp.password})&amp;maximumReconnectAttempts=0&amp;reconnectDelay=5000&amp;stepwise=false&amp;separator=UNIX&amp;throwExceptionOnConnectFailed=true&amp;delete=true&amp;maxMessagesPerPoll=1&amp;fileName=${body}</simple>
+      </setHeader>
+      <log message="Claiming message: ${body}"/>
+      <enrich uri="bean:consumer?method=receiveBody(${headers[MessageStoreURI]})"/>
+      <convertBodyTo type="java.lang.byte[]"/>
+    </route>
+
+  </camelContext>
+
+</blueprint>

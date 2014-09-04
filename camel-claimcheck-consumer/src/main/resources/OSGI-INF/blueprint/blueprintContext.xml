@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+~ Copyright (C) Red Hat, Inc.
+~ http://www.redhat.com
+~
+~ Licensed under the Apache License, Version 2.0 (the "License");
+~ you may not use this file except in compliance with the License.
+~ You may obtain a copy of the License at
+~
+~    http://www.apache.org/licenses/LICENSE-2.0
+~
+~ Unless required by applicable law or agreed to in writing, software
+~ distributed under the License is distributed on an "AS IS" BASIS,
+~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+~ See the License for the specific language governing permissions and
+~ limitations under the License.
+-->
+<blueprint xmlns="http://www.osgi.org/xmlns/blueprint/v1.0.0"
+           xmlns:camel="http://camel.apache.org/schema/blueprint"
+           xmlns:cm="http://aries.apache.org/blueprint/xmlns/blueprint-cm/v1.1.0"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:schemaLocation="http://www.osgi.org/xmlns/blueprint/v1.0.0 http://www.osgi.org/xmlns/blueprint/v1.0.0/blueprint.xsd
+                               http://camel.apache.org/schema/blueprint http://camel.apache.org/schema/blueprint/camel-blueprint.xsd
+                               http://aries.apache.org/blueprint/xmlns/blueprint-cm/v1.1.0 http://aries.apache.org/schemas/blueprint-cm/blueprint-cm-1.1.0.xsd">
+
+  <cm:property-placeholder persistent-id="org.jboss.poc.camelclaimcheck.consumer" update-strategy="reload">
+    <cm:default-properties>
+      <cm:property name="file.producer.path" value="data/deststore"/>
+
+      <cm:property name="jms.broker.url" value="vm://amq"/>
+      <cm:property name="jms.broker.username" value="admin"/>
+      <cm:property name="jms.broker.password" value="admin"/>
+
+      <cm:property name="jms.consumer.queueName" value="org.jboss.poc.camelclaimcheck"/>
+    </cm:default-properties>
+  </cm:property-placeholder>
+  
+  <bean id="jms" class="org.apache.activemq.camel.component.ActiveMQComponent">
+    <property name="brokerURL" value="${jms.broker.url}"/>
+    <property name="userName" value="${jms.broker.username}"/>
+    <property name="password" value="${jms.broker.password}"/>
+  </bean>
+ 
+  <reference id="messageStore" interface="org.jboss.poc.camel.store.MessageStore"/>
+ 
+  <camelContext id="camel-claimcheck-consumer" trace="false" xmlns="http://camel.apache.org/schema/blueprint">
+
+    <route id="jmsConsumerRoute">
+      <from uri="jms:queue:{{jms.consumer.queueName}}?disableReplyTo=true"/>
+      <log message="Consumed a JMS message: ${headers[JMSMessageID]}"/>
+      <log message="Claiming message..."/>
+      <bean ref="messageStore" method="claim(${body})"/>
+      <log message="Producing file..."/>
+      <to uri="file://{{file.producer.path}}"/>
+    </route>
+
+  </camelContext>
+
+</blueprint>
