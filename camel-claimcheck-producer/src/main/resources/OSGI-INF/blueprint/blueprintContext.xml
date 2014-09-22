@@ -23,7 +23,7 @@
                                http://camel.apache.org/schema/blueprint http://camel.apache.org/schema/blueprint/camel-blueprint.xsd
                                http://aries.apache.org/blueprint/xmlns/blueprint-cm/v1.1.0 http://aries.apache.org/schemas/blueprint-cm/blueprint-cm-1.1.0.xsd">
 
-  <cm:property-placeholder persistent-id="org.jboss.poc.camelclaimcheck.producer" update-strategy="reload">
+  <cm:property-placeholder persistent-id="org.jboss.poc.camelclaimcheck.producer" update-strategy="none">
     <cm:default-properties>
       <cm:property name="file.consumer.path" value="data/store"/>
 
@@ -43,7 +43,7 @@
  
   <reference id="messageStore" interface="org.jboss.poc.camel.store.MessageStore"/>
  
-  <camelContext id="camel-claimcheck-producer" trace="false" xmlns="http://camel.apache.org/schema/blueprint">
+  <camelContext id="camel-claimcheck-producer" trace="true" xmlns="http://camel.apache.org/schema/blueprint">
 
     <route id="fileConsumerRoute">
       <from uri="file://{{file.consumer.path}}?moveFailed=.error"/>
