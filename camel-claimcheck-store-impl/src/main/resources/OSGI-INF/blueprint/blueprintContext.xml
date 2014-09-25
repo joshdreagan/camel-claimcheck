@@ -64,7 +64,7 @@
         <simple>${body.args[0]}</simple>
       </setBody>
       <convertBodyTo type="java.lang.byte[]"/>
-      <to uri="sftp://{{store.sftp.username}}@{{store.sftp.host}}:{{store.sftp.port}}/{{store.sftp.path}}?password=RAW({{store.sftp.password}})&amp;maximumReconnectAttempts=0&amp;reconnectDelay=5000&amp;stepwise=true&amp;separator=UNIX&amp;throwExceptionOnConnectFailed=true"/>
+      <to uri="sftp://{{store.sftp.username}}@{{store.sftp.host}}:{{store.sftp.port}}/{{store.sftp.path}}?password=RAW({{store.sftp.password}})&amp;maximumReconnectAttempts=0&amp;reconnectDelay=5000&amp;stepwise=true&amp;separator=UNIX&amp;throwExceptionOnConnectFailed=true&amp;preferredAuthentications=password"/>
       <setBody>
         <simple>${id}</simple>
       </setBody>
@@ -79,7 +79,7 @@
         <simple>${body}</simple>
       </setHeader>
       <setHeader headerName="MessageStoreURI">
-        <simple>sftp://${properties:store.sftp.username}@${properties:store.sftp.host}:${properties:store.sftp.port}/${properties:store.sftp.path}?password=RAW(${properties:store.sftp.password})&amp;maximumReconnectAttempts=0&amp;reconnectDelay=5000&amp;stepwise=false&amp;separator=UNIX&amp;throwExceptionOnConnectFailed=true&amp;delete=true&amp;maxMessagesPerPoll=1&amp;fileName=${body}</simple>
+        <simple>sftp://${properties:store.sftp.username}@${properties:store.sftp.host}:${properties:store.sftp.port}/${properties:store.sftp.path}?password=RAW(${properties:store.sftp.password})&amp;maximumReconnectAttempts=0&amp;reconnectDelay=5000&amp;stepwise=false&amp;separator=UNIX&amp;throwExceptionOnConnectFailed=true&amp;delete=true&amp;maxMessagesPerPoll=1&amp;preferredAuthentications=password&amp;disconnect=true&amp;fileName=${body}</simple>
       </setHeader>
       <log message="Claiming message: ${body}"/>
       <enrich uri="bean:consumer?method=receiveBody(${headers[MessageStoreURI]})"/>
